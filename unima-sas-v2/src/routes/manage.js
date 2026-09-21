@@ -437,4 +437,19 @@ el.get('/export', asyncHandler(async (req, res) => {
   });
 }));
 
+const { resultsPdf, votersPdf } = require('../pdf');
+
+// Results PDF — one page per position, winner 🏆 / loser 🚲 next to the vote count.
+el.get('/results/pdf', asyncHandler(async (req, res) => {
+  const results = await buildResults({ query }, req.election.id);
+  resultsPdf(res, req.election, results);
+}));
+
+// Registered voters PDF — full list with status and voted flag.
+el.get('/voters/pdf', asyncHandler(async (req, res) => {
+  const { rows } = await query(
+    `SELECT ${VOTER_COLS} FROM voters WHERE election_id = $1 ORDER BY reg_number`, [req.election.id]);
+  votersPdf(res, req.election, rows);
+}));
+
 module.exports = router;

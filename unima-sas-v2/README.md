@@ -23,6 +23,8 @@ Nominations are handled outside the system, so the *Nominations* tab and phase c
 4. Forgotten password? **Reset password** on the voter's row gives you a new one to pass on.
 5. Voting can only open once registration is closed and at least one voter is approved. Only approved voters can vote.
 
+**Exports:** the **Voters** tab has *Download PDF* (full list) and *Download list (CSV)*. The **Results** tab has *Download PDF* (one page per position, winners 🏆 / losers 🚲 beside the vote count), *Download data (JSON)* and a live refresh.
+
 Ballots are not linked to voters (only a "has voted" flag is set), so votes stay secret. Rejected voters who already voted can't be rejected, and the voter list locks when voting closes.
 
 ### The "voting profile"

@@ -259,6 +259,7 @@
           </select>
           <span class="grow"></span>
           <button class="btn sm" id="vRefresh" type="button">Refresh</button>
+          <a class="btn sm" id="vPdf" type="button" href="/api${base}/voters/pdf" target="_blank" rel="noopener">Download PDF</a>
           <button class="btn sm" id="vCsv" type="button" ${n.all ? '' : 'disabled'}>Download list (CSV)</button>
         </div>
         <div class="toolbar">
@@ -498,6 +499,7 @@
           <div class="item-actions">
             <button class="btn sm" id="refresh" type="button">Refresh</button>
             <button class="btn sm" id="export" type="button">Download data (JSON)</button>
+            <a class="btn sm" id="pdf" type="button" href="/api${base}/results/pdf" target="_blank" rel="noopener">Download PDF</a>
           </div>
         </div>
         <div id="resBox"></div>`;

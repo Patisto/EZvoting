@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Election console</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+</head>
+<body>
+<div class="page-title">
+  <p class="small"><a id="backLink" href="/dashboard">← All elections</a></p>
+  <div class="row between"><h1 id="title">Loading…</h1><span id="phase"></span></div>
+</div>
+<div class="tabs"><div class="inner">
+  <button class="tab active" data-tab="overview" type="button">Overview</button>
+  <button class="tab" data-tab="setup" type="button">Setup</button>
+  <button class="tab" data-tab="voters" type="button">Voters</button>
+  <button class="tab" data-tab="candidates" type="button">Candidates</button>
+  <button class="tab" data-tab="nominations" type="button">Nominations</button>
+  <button class="tab" data-tab="results" type="button">Results</button>
+</div></div>
+<div class="container wide" id="view"><p class="muted">Loading…</p></div>
+<script src="/js/common.js"></script>
+<script src="/js/manage.js"></script>
+</body>
+</html>

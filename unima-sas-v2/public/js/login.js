@@ -31,4 +31,12 @@
   btn.addEventListener('click', submit);
   $('#password').addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
   $('#username').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#password').focus(); });
+  // Show/hide password (same toggle as the voter login screen).
+  const toggle = $('.pw-toggle');
+  if (toggle) toggle.addEventListener('click', () => {
+    const input = $('#password');
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    toggle.textContent = show ? 'Hide' : 'Show';
+  });
 })();

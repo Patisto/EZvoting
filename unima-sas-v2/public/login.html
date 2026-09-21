@@ -16,7 +16,7 @@
 <div class="container">
   <div class="card login-box">
     <label class="field">Username<input type="text" id="username" autocomplete="username" autocapitalize="none"/></label>
-    <label class="field">Password<input type="password" id="password" autocomplete="current-password"/></label>
+    <label class="field">Password<div class="pw-wrap"><input type="password" id="password" autocomplete="current-password"/><button type="button" class="pw-toggle" data-for="password">Show</button></div></label>
     <p id="err" class="small" style="color:var(--danger);min-height:18px;margin-bottom:8px"></p>
     <button class="btn primary block" id="loginBtn" type="button">Sign in</button>
   </div>

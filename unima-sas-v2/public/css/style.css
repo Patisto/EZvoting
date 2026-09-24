@@ -118,15 +118,15 @@ textarea { resize: vertical; min-height: 60px; }
 
 /* ── Ballot ── */
 .position-block { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
-.candidates-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
-.candidate-card { position: relative; border: 2px solid var(--border); border-radius: 12px; padding: 12px 8px; text-align: center; cursor: pointer; background: #fff; transition: all .15s; user-select: none; }
+.candidates-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+.candidate-card { position: relative; border: 2px solid var(--border); border-radius: 14px; padding: 14px 10px; text-align: center; cursor: pointer; background: #fff; transition: all .15s; user-select: none; }
 .candidate-card:hover:not(.locked) { border-color: var(--primary); }
 .candidate-card.selected { border-color: var(--primary); background: var(--selected-bg); }
-.candidate-card.selected::after { content: '✓'; position: absolute; top: 6px; right: 8px; color: #fff; background: var(--primary); width: 20px; height: 20px; border-radius: 50%; font-size: 12px; line-height: 20px; }
+.candidate-card.selected::after { content: '✓'; position: absolute; top: 8px; right: 10px; color: #fff; background: var(--primary); width: 22px; height: 22px; border-radius: 50%; font-size: 13px; line-height: 22px; }
 .candidate-card.locked { opacity: .55; cursor: default; }
-.candidate-photo, .candidate-photo-placeholder { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; margin: 0 auto 8px; display: block; }
-.candidate-photo-placeholder { background: var(--soft-bg); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; border: 1px solid var(--border); }
-.candidate-name { font-size: 13px; font-weight: 500; line-height: 1.3; }
+.candidate-photo, .candidate-photo-placeholder { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; margin: 0 auto 10px; display: block; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+.candidate-photo-placeholder { background: var(--soft-bg); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 22px; border: 1px solid var(--border); }
+.candidate-name { font-size: 14px; font-weight: 500; line-height: 1.3; }
 .submit-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid var(--border); padding: 12px 16px; box-shadow: 0 -4px 16px rgba(0,0,0,.06); z-index: 60; }
 .submit-bar .btn { max-width: 728px; margin: 0 auto; display: block; }
 
@@ -158,7 +158,10 @@ textarea { resize: vertical; min-height: 60px; }
 .item-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .item-row:last-child { border-bottom: none; }
 .item-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.item-info .thumb { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: var(--soft-bg); display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--muted); flex-shrink: 0; }
+.item-info .thumb { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; background: var(--soft-bg); display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--muted); flex-shrink: 0; cursor: pointer; }
+.item-info .thumb[data-photo] { cursor: pointer; }
+.photo-viewer { text-align: center; }
+.photo-viewer img { max-width: 100%; max-height: 80vh; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
 .item-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .nominee-pick { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--border); font-size: 13px; }
 .nominee-pick:last-child { border-bottom: none; }

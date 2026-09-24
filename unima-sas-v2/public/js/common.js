@@ -179,8 +179,17 @@
 
   // Candidate photo that falls back to initials if the image fails to load.
   window.avatar = (c, cls = 'candidate-photo') => c.photo_url
-    ? `<img class="${cls}" src="${esc(c.photo_url)}" alt="${esc(c.name)}" data-fallback="${esc(initials(c.name))}" data-fallback-class="${cls}-placeholder" loading="lazy"/>`
+    ? `<img class="${cls}" src="${esc(c.photo_url)}" alt="${esc(c.name)}" data-photo="${esc(c.photo_url)}" data-name="${esc(c.name)}" loading="lazy"/>`
     : `<div class="${cls}-placeholder">${esc(initials(c.name))}</div>`;
+
+  // Open a candidate's photo full-size in a modal. Works for ballot photos and console thumbs.
+  window.openPhoto = function (url, name) {
+    return modal({
+      title: name || 'Photo',
+      content: `<div class="photo-viewer"><img src="${esc(url)}" alt="${esc(name)}"/></div>`,
+      actions: [{ label: 'Close', kind: 'primary', value: true }],
+    });
+  };
 
   // CSP blocks inline onerror, so image failures are handled here (error doesn't bubble; use capture).
   document.addEventListener('error', (e) => {
@@ -190,6 +199,12 @@
       t.replaceWith(ph);
     }
   }, true);
+
+  // Click any candidate photo to view it full-size.
+  document.addEventListener('click', (e) => {
+    const img = e.target.closest('img[data-photo]');
+    if (img) openPhoto(img.dataset.photo, img.dataset.name || '');
+  });
 
   // Results renderer shared by public results and the facilitator console.
   window.renderResults = function (container, results) {

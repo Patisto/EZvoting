@@ -429,7 +429,7 @@
             return `${g.label ? `<div class="group-label">${esc(g.label)}</div>` : ''}
               ${cs.length ? cs.map((c) => `
                 <div class="item-row" data-id="${c.id}">
-                  <div class="item-info">${c.photo_url ? `<img class="thumb" src="${esc(c.photo_url)}" alt="" data-fallback="${esc(initials(c.name))}" data-fallback-class="thumb"/>` : `<div class="thumb">${esc(initials(c.name))}</div>`}<span>${esc(c.name)}</span></div>
+                  <div class="item-info">${c.photo_url ? `<img class="thumb" src="${esc(c.photo_url)}" alt="" data-photo="${esc(c.photo_url)}" data-name="${esc(c.name)}"/>` : `<div class="thumb">${esc(initials(c.name))}</div>`}<span>${esc(c.name)}</span></div>
                   <div class="item-actions">
                     <button class="btn sm" data-act="edit" type="button">Edit</button>
                     <button class="btn sm danger-ghost" data-act="del" type="button" ${locked ? 'disabled' : ''}>Remove</button>

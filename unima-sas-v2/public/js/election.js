@@ -384,8 +384,8 @@
   // ── Results ──
   async function renderPublicResults() {
     $('#submitBar').classList.add('hidden');
-    app.innerHTML = `<div class="banner ok">Results have been released.</div>${election.phase === 'runoff'
-      ? '<div class="banner">A tie-break is open for the marked categories. Log in below to vote again in those categories only.</div><button class="btn primary" id="tieLogin" type="button">Log in to vote in tie-break</button>' : ''}<div id="resultsBox"><p class="muted">Loading…</p></div>`;
+    app.innerHTML = `<div class="banner ok">${election.phase === 'runoff' ? 'Tie-break voting is open.' : 'Results have been released.'}</div>${election.phase === 'runoff'
+      ? '<div class="banner">Only tied categories and tied candidates are shown. Log in below to vote in those categories only.</div><button class="btn primary" id="tieLogin" type="button">Log in to vote in tie-break</button>' : ''}<div id="resultsBox"><p class="muted">Loading…</p></div>`;
     if ($('#tieLogin')) $('#tieLogin').addEventListener('click', () => renderVoterArea(false));
     try {
       const res = await api(`/public/elections/${encodeURIComponent(slug)}/results`);

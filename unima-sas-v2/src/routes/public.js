@@ -230,6 +230,25 @@ router.post('/elections/:slug/vote', writeLimiter, authenticateVoter, asyncHandl
 
 router.get('/elections/:slug/results', asyncHandler(async (req, res) => {
   const e = await findElection({ query }, req.params.slug);
+  if (e.runoff_state === 'open') {
+    const results = await buildResults({ query }, e.id);
+    const slots = new Set(e.runoff_slots.map((slot) => `${slot.position_id}:${slot.group_id || 0}`));
+    results.positions = results.positions
+      .map((position) => ({
+        ...position,
+        slots: position.slots
+          .filter((slot) => slots.has(`${position.id}:${slot.group_id || 0}`))
+          .map((slot) => ({
+            ...slot,
+            runoff_pending: true,
+            candidates: slot.candidates.filter((candidate) => e.runoff_slots
+              .find((runoffSlot) => String(runoffSlot.position_id) === String(position.id) && (runoffSlot.group_id || null) === (slot.group_id || null))
+              ?.candidate_ids.map(String).includes(String(candidate.id))),
+          })),
+      }))
+      .filter((position) => position.slots.length);
+    return res.json({ released: true, runoff: true, results });
+  }
   if (!e.results_released) return res.json({ released: false });
   res.json({ released: true, results: await buildResults({ query }, e.id) });
 }));

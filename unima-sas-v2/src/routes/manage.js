@@ -166,7 +166,7 @@ el.post('/runoff', asyncHandler(async (req, res) => {
     });
 
     const { rows } = await c.query(
-      `UPDATE elections SET runoff_state = 'open', runoff_slots = $2::jsonb, updated_at = NOW()
+      `UPDATE elections SET runoff_state = 'open', runoff_slots = $2::jsonb, results_released = FALSE, updated_at = NOW()
        WHERE id = $1 RETURNING *`, [cur.id, JSON.stringify(slots)]);
     return rows[0];
   });
@@ -188,6 +188,9 @@ el.post('/results/release', asyncHandler(async (req, res) => {
   if (typeof req.body?.released !== 'boolean') throw new HttpError(400, 'released must be true or false.');
   const election = await tx(async (c) => {
     const cur = await lockElection(c, req.election.id);
+    if (cur.runoff_state === 'open' && req.body.released) {
+      throw new HttpError(409, 'Close the tie-break before releasing final results.');
+    }
     if (req.body.released && cur.voting_state !== 'closed') {
       throw new HttpError(409, 'Close voting before releasing results.');
     }

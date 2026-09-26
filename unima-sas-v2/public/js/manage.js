@@ -90,7 +90,7 @@
             : `<button class="btn primary" data-act="vote-open" type="button" ${n === 'open' || r === 'open' ? 'disabled' : ''}>${v === 'closed' ? 'Reopen voting' : 'Open voting'}</button>`}
         </div>
         <div class="phase-card"><h4>3 · Results</h4>${chip(e.results_released ? 'results' : 'pending', e.results_released ? 'Released' : 'Hidden')}
-          <button class="btn ${e.results_released ? '' : 'success'}" data-act="release" type="button" ${v !== 'closed' ? 'disabled' : ''}>${e.results_released ? 'Hide results' : 'Release results'}</button>
+          <button class="btn ${e.results_released ? '' : 'success'}" data-act="release" type="button" ${v !== 'closed' || e.runoff_state === 'open' ? 'disabled' : ''}>${e.runoff_state === 'open' ? 'Tie-break in progress' : (e.results_released ? 'Hide results' : 'Release results')}</button>
         </div>
       </div>
       ${v === 'closed' && !e.results_released

@@ -93,9 +93,20 @@
           <button class="btn ${e.results_released ? '' : 'success'}" data-act="release" type="button" ${v !== 'closed' ? 'disabled' : ''}>${e.results_released ? 'Hide results' : 'Release results'}</button>
         </div>
       </div>
+      ${v === 'closed' && !e.results_released
+        ? '<div class="banner warn">Close voting is complete. Release the initial results first, then open the <b>Results</b> tab to review any ties and start a tie-break.</div>'
+        : ''}
+      ${v === 'closed' && e.results_released
+        ? '<div class="banner"><b>Tie-break voting:</b> Open the <button class="btn sm" id="reviewTies" type="button">Results tab</button> to review tied categories.</div>'
+        : ''}
       <p class="small muted">Flow: open registration → close it → check and approve voters (Voters tab) → open voting → close voting → release results. Only approved voters can vote.</p>`;
 
     $('#copyLink').addEventListener('click', () => copyText(url));
+    if ($('#reviewTies')) $('#reviewTies').addEventListener('click', () => {
+      tab = 'results';
+      $$('.tab').forEach((x) => x.classList.toggle('active', x.dataset.tab === 'results'));
+      render();
+    });
     view.onclick = async (ev) => {
       const b = ev.target.closest('button[data-act]');
       if (!b) return;

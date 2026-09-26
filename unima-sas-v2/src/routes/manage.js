@@ -437,7 +437,7 @@ el.get('/export', asyncHandler(async (req, res) => {
   });
 }));
 
-const { resultsPdf, votersPdf } = require('../pdf');
+const { resultsPdf, votersPdf, candidatesPdf } = require('../pdf');
 
 // Results PDF — one page per position, winner 🏆 / loser 🚲 next to the vote count.
 el.get('/results/pdf', asyncHandler(async (req, res) => {
@@ -450,6 +450,15 @@ el.get('/voters/pdf', asyncHandler(async (req, res) => {
   const { rows } = await query(
     `SELECT ${VOTER_COLS} FROM voters WHERE election_id = $1 ORDER BY reg_number`, [req.election.id]);
   votersPdf(res, req.election, rows);
+}));
+
+// Candidate ballot PDF — for confirming the ballot before opening voting.
+el.get('/candidates/pdf', asyncHandler(async (req, res) => {
+  const [structure, candidates] = await Promise.all([
+    loadStructure({ query }, req.election.id),
+    loadCandidates({ query }, req.election.id),
+  ]);
+  candidatesPdf(res, req.election, { ...structure, candidates });
 }));
 
 module.exports = router;

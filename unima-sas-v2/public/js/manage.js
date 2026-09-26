@@ -405,7 +405,12 @@
     if (!S.positions.length) { view.innerHTML = '<div class="banner">Add positions in Setup first.</div>'; return; }
 
     view.innerHTML = `
-      ${locked ? '<div class="banner warn">Voting has opened, so candidates are locked. You can still fix names and photos.</div>' : `
+      ${locked ? '<div class="banner warn">Voting has opened, so candidates are locked. You can still fix names and photos.</div>' : ''}
+      <div class="row between" style="margin-bottom:14px">
+        <p class="muted small">${S.candidates.length} candidate${S.candidates.length === 1 ? '' : 's'} · ${S.positions.length} position${S.positions.length === 1 ? '' : 's'}${S.groups.length ? ' · ' + S.groups.length + ' group' + (S.groups.length === 1 ? '' : 's') : ''}</p>
+        <button class="btn sm" id="candPdf" type="button">Download PDF</button>
+      </div>
+      ${locked ? '' : `
       <div class="card">
         <h3>Add a candidate</h3>
         <div class="grid-2">
@@ -471,23 +476,30 @@
 
     view.onclick = async (ev) => {
       const b = ev.target.closest('button[data-act]');
-      if (!b) return;
-      const c = S.candidates.find((x) => x.id === Number(b.closest('.item-row').dataset.id));
-      if (b.dataset.act === 'del') {
-        if (await confirmDialog('Remove candidate?', `Remove <b>${esc(c.name)}</b> from the ballot?`, { danger: true, confirmLabel: 'Remove' }))
-          act(() => call(`/candidates/${c.id}`, { method: 'DELETE' }), 'Removed.');
-      } else {
-        const body = el('div', '', `
-          <label class="field">Full name<input type="text" id="eName" maxlength="80" value="${esc(c.name)}"/></label>
-          <label class="field">Photo link<input type="url" id="ePhoto" maxlength="500" value="${esc(c.photo_url || '')}"/></label>`);
-        const ok = await modal({
-          title: 'Edit candidate', content: body,
-          actions: [{ label: 'Cancel', value: false }, {
-            label: 'Save', kind: 'primary', value: true,
-            run: (m) => call(`/candidates/${c.id}`, { method: 'PATCH', body: { name: $('#eName', m).value, photo_url: $('#ePhoto', m).value } }),
-          }],
-        });
-        if (ok) { toast('Saved.'); load(); }
+      if (b) {
+        const c = S.candidates.find((x) => x.id === Number(b.closest('.item-row').dataset.id));
+        if (b.dataset.act === 'del') {
+          if (await confirmDialog('Remove candidate?', `Remove <b>${esc(c.name)}</b> from the ballot?`, { danger: true, confirmLabel: 'Remove' }))
+            act(() => call(`/candidates/${c.id}`, { method: 'DELETE' }), 'Removed.');
+        } else {
+          const body = el('div', '', `
+            <label class="field">Full name<input type="text" id="eName" maxlength="80" value="${esc(c.name)}"/></label>
+            <label class="field">Photo link<input type="url" id="ePhoto" maxlength="500" value="${esc(c.photo_url || '')}"/></label>`);
+          const ok = await modal({
+            title: 'Edit candidate', content: body,
+            actions: [{ label: 'Cancel', value: false }, {
+              label: 'Save', kind: 'primary', value: true,
+              run: (m) => call(`/candidates/${c.id}`, { method: 'PATCH', body: { name: $('#eName', m).value, photo_url: $('#ePhoto', m).value } }),
+            }],
+          });
+          if (ok) { toast('Saved.'); load(); }
+        }
+        return;
+      }
+      const pdf = ev.target.closest('#candPdf');
+      if (pdf) {
+        try { await downloadPdf(`/manage/elections/${id}/candidates/pdf`, `${S.election.slug}-candidates.pdf`); toast('PDF downloaded.'); }
+        catch (e) { toast(e.message, 'error'); }
       }
     };
   }

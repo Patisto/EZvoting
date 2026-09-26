@@ -24,6 +24,22 @@ function header(doc, election) {
   doc.moveDown(1);
 }
 
+function drawCandidate(doc, c, x, y, w) {
+  // Try to embed the photo; fall back to the URL text if it can't be fetched.
+  let used = false;
+  if (c.photo_url) {
+    try {
+      doc.image(c.photo_url, x, y, { width: 48, height: 48 });
+      used = true;
+    } catch (_) { /* fall through to text */ }
+  }
+  doc.font('Helvetica-Bold').fontSize(11).text(c.name, x + (used ? 56 : 0), y, { width: w - (used ? 56 : 0) });
+  if (!used && c.photo_url) {
+    doc.font('Helvetica').fontSize(8).text(`Photo: ${c.photo_url}`, x, y + 16, { width: w, color: '#6b7280' });
+  }
+  return y + 60;
+}
+
 module.exports = {
   resultsPdf: (res, election, results) => streamResponse(res, `${election.slug}-results.pdf`, (doc) => {
     header(doc, election);
@@ -75,6 +91,34 @@ module.exports = {
       doc.text(v.has_voted ? 'Yes' : 'No', xs[2], y, { width: 60 });
       doc.text(new Date(v.created_at).toISOString().slice(0, 16), xs[3], y, { width: 120 });
       doc.moveDown(0.55);
+    });
+  }),
+
+  // The candidate ballot: one page per position, grouped like the on-screen ballot.
+  candidatesPdf: (res, election, { groups, positions, candidates }) => streamResponse(res, `${election.slug}-candidates.pdf`, (doc) => {
+    header(doc, election);
+    doc.font('Helvetica-Bold').fontSize(11).text(`Candidates: ${candidates.length} · Positions: ${positions.length} · Groups: ${groups.length || 'none'}`);
+    doc.moveDown(1);
+    const slotGroups = groups.length ? groups : [{ id: null, label: null }];
+    positions.forEach((p) => {
+      doc.font('Helvetica-Bold').fontSize(13).text(p.title, { underline: true });
+      doc.moveDown(0.5);
+      slotGroups.forEach((g) => {
+        const cs = candidates.filter((c) => c.position_id === p.id && (c.group_id ?? null) === g.id);
+        if (g.label) {
+          doc.font('Helvetica-BoldOblique').fontSize(11).text(`Group: ${g.label}`);
+          doc.font('Helvetica').fontSize(10);
+        }
+        if (!cs.length) { doc.font('Helvetica').fontSize(10).text('No candidates listed.'); doc.moveDown(0.5); return; }
+        let y = doc.y;
+        cs.forEach((c) => {
+          y = drawCandidate(doc, c, 48, y, 456);
+          if (y > 740) { doc.addPage(); y = 48; }
+        });
+        doc.moveDown(0.8);
+      });
+      if (doc.y > 740) doc.addPage();
+      doc.moveDown(0.6);
     });
   }),
 };

@@ -177,6 +177,25 @@
     URL.revokeObjectURL(url);
   };
 
+  // Authenticated PDF: fetch with the bearer token (a plain <a> can't carry it) and save the blob.
+  window.downloadPdf = async function (path, filename) {
+    const headers = {};
+    if (Session.token()) headers.Authorization = 'Bearer ' + Session.token();
+    let res;
+    try {
+      res = await fetch('/api' + path, { headers });
+    } catch (_) { throw new Error('Network error. Check your connection and try again.'); }
+    if (!res.ok) {
+      let msg = 'Please log in.';
+      try { const d = await res.json(); if (d && d.error) msg = d.error; } catch (_) {}
+      throw new Error(msg);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = el('a'); a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Candidate photo that falls back to initials if the image fails to load.
   window.avatar = (c, cls = 'candidate-photo') => c.photo_url
     ? `<img class="${cls}" src="${esc(c.photo_url)}" alt="${esc(c.name)}" data-photo="${esc(c.photo_url)}" data-name="${esc(c.name)}" loading="lazy"/>`

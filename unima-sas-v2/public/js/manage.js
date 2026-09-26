@@ -259,7 +259,7 @@
           </select>
           <span class="grow"></span>
           <button class="btn sm" id="vRefresh" type="button">Refresh</button>
-          <a class="btn sm" id="vPdf" type="button" href="/api${base}/voters/pdf" target="_blank" rel="noopener">Download PDF</a>
+          <button class="btn sm" id="vPdf" type="button">Download PDF</button>
           <button class="btn sm" id="vCsv" type="button" ${n.all ? '' : 'disabled'}>Download list (CSV)</button>
         </div>
         <div class="toolbar">
@@ -305,6 +305,10 @@
       downloadCSV(
         [['reg_number', 'status', 'has_voted', 'registered_at'], ...rows.map((v) => [v.reg_number, v.status, v.has_voted ? 'yes' : 'no', v.created_at])],
         `${e.slug}-voters-${vFilter.status}-${new Date().toISOString().slice(0, 10)}.csv`);
+    });
+    $('#vPdf').addEventListener('click', async () => {
+      try { await downloadPdf(`/manage/elections/${id}/voters/pdf`, `${e.slug}-voters.pdf`); toast('PDF downloaded.'); }
+      catch (err) { toast(err.message, 'error'); }
     });
 
     $('#vApproveAll').addEventListener('click', async () => {
@@ -499,7 +503,7 @@
           <div class="item-actions">
             <button class="btn sm" id="refresh" type="button">Refresh</button>
             <button class="btn sm" id="export" type="button">Download data (JSON)</button>
-            <a class="btn sm" id="pdf" type="button" href="/api${base}/results/pdf" target="_blank" rel="noopener">Download PDF</a>
+            <button class="btn sm" id="pdf" type="button">Download PDF</button>
           </div>
         </div>
         <div id="resBox"></div>`;
@@ -507,6 +511,10 @@
       $('#refresh').addEventListener('click', renderResultsTab);
       $('#export').addEventListener('click', async () => {
         try { downloadJSON(await call('/export'), `${S.election.slug}-${new Date().toISOString().slice(0, 10)}.json`); }
+        catch (e) { toast(e.message, 'error'); }
+      });
+      $('#pdf').addEventListener('click', async () => {
+        try { await downloadPdf(`/manage/elections/${id}/results/pdf`, `${S.election.slug}-results.pdf`); toast('PDF downloaded.'); }
         catch (e) { toast(e.message, 'error'); }
       });
     } catch (e) { view.innerHTML = `<div class="banner warn">${esc(e.message)}</div>`; }

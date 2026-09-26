@@ -262,8 +262,9 @@
     } else if (voter.status === 'pending') {
       body = '<div class="banner warn">Your registration is still waiting for approval by the elections committee. Check again later.</div>';
     } else if (phase === 'runoff' && !voter.runoff_has_voted) {
-      app.innerHTML = voterBar(voter) + '<div id="ballotBox"></div>';
+      app.innerHTML = voterBar(voter) + '<div id="runoffResultsBox"></div><div id="ballotBox"></div>';
       $('#logoutBtn').addEventListener('click', logout);
+      loadRunoffResults();
       renderBallot();
       return;
     } else if (phase === 'voting' && !voter.has_voted) {
@@ -338,6 +339,13 @@
     };
   }
 
+  async function loadRunoffResults() {
+    try {
+      const res = await api(`/public/elections/${encodeURIComponent(slug)}/results`);
+      if (res.released) renderResults($('#runoffResultsBox'), res.results);
+    } catch (_) {}
+  }
+
   async function submitVotes() {
     if (!selections.size) { toast('Select at least one candidate first.', 'error'); return; }
     const votes = Array.from(selections, ([key, candidate_id]) => {
@@ -376,7 +384,9 @@
   // ── Results ──
   async function renderPublicResults() {
     $('#submitBar').classList.add('hidden');
-    app.innerHTML = '<div class="banner ok">Results have been released.</div><div id="resultsBox"><p class="muted">Loading…</p></div>';
+    app.innerHTML = `<div class="banner ok">Results have been released.</div>${election.phase === 'runoff'
+      ? '<div class="banner">A tie-break is open for the marked categories. Log in below to vote again in those categories only.</div><button class="btn primary" id="tieLogin" type="button">Log in to vote in tie-break</button>' : ''}<div id="resultsBox"><p class="muted">Loading…</p></div>`;
+    if ($('#tieLogin')) $('#tieLogin').addEventListener('click', () => renderVoterArea(false));
     try {
       const res = await api(`/public/elections/${encodeURIComponent(slug)}/results`);
       if (!res.released) { $('#resultsBox').innerHTML = '<p class="muted">Results are not available.</p>'; return; }
@@ -401,7 +411,7 @@
       if (election.public_nominations) renderNominationList(true);
       break;
     case 'voting': setStatus('open', 'Voting is open'); renderVoterArea(false); break;
-    case 'runoff': setStatus('open', 'Tie-break voting is open'); renderVoterArea(false); break;
+    case 'runoff': setStatus('open', 'Tie-break voting is open'); renderPublicResults(); break;
     case 'voting_closed':
       setStatus('closed', 'Voting is closed');
       app.innerHTML = '<div class="banner">Voting has closed. Results will be announced soon.</div>';

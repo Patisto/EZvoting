@@ -34,7 +34,7 @@ const authLimiter = rateLimit({
 const DUMMY_HASH = bcrypt.hashSync('not-a-real-password', 10);
 const BCRYPT_COST = 10;
 
-const voterView = (v) => ({ reg_number: v.reg_number, status: v.status, has_voted: v.has_voted });
+const voterView = (v) => ({ reg_number: v.reg_number, status: v.status, has_voted: v.has_voted, runoff_has_voted: v.runoff_has_voted });
 
 router.get('/config', (req, res) => {
   res.json({ brand: process.env.BRAND_NAME || 'Elections' });
@@ -171,7 +171,9 @@ router.post('/elections/:slug/vote', writeLimiter, authenticateVoter, asyncHandl
     // FOR SHARE: a facilitator closing voting (which updates this row) waits for in-flight ballots to finish.
     const e = await findElection(c, req.params.slug, { lock: true });
     if (req.voter.election_id !== e.id) throw new HttpError(403, 'This login belongs to a different election.');
-    if (e.voting_state !== 'open') throw new HttpError(403, 'Voting is not open.');
+    const round = e.runoff_state === 'open' ? 'runoff' : 'initial';
+    if (round === 'initial' && e.voting_state !== 'open') throw new HttpError(403, 'Voting is not open.');
+    if (round === 'runoff' && e.runoff_state !== 'open') throw new HttpError(403, 'The tie-break is not open.');
 
     // Row lock on the voter: concurrent submits from the same voter run one after the other.
     const vr = await c.query('SELECT status, has_voted FROM voters WHERE id = $1 FOR UPDATE', [req.voter.id]);
@@ -179,7 +181,9 @@ router.post('/elections/:slug/vote', writeLimiter, authenticateVoter, asyncHandl
     if (!voter || voter.status !== 'approved') {
       throw new HttpError(403, 'Your registration has not been approved, so you cannot vote.');
     }
-    if (voter.has_voted) throw new HttpError(409, 'You have already voted.');
+    if (round === 'initial' ? voter.has_voted : voter.runoff_has_voted) {
+      throw new HttpError(409, `You have already voted in the ${round} round.`);
+    }
 
     const cands = await c.query('SELECT id, position_id, group_id FROM candidates WHERE election_id = $1', [e.id]);
     const byId = new Map(cands.rows.map((r) => [r.id, r]));
@@ -193,6 +197,9 @@ router.post('/elections/:slug/vote', writeLimiter, authenticateVoter, asyncHandl
       if (!cand || cand.position_id !== positionId || (cand.group_id ?? null) !== groupId) {
         throw new HttpError(400, 'One of your selections is invalid. Please refresh and try again.');
       }
+      if (round === 'runoff' && !e.runoff_slots.some((s) => s.position_id === positionId && (s.group_id ?? null) === groupId && s.candidate_ids.includes(candidateId))) {
+        throw new HttpError(400, 'One of your selections is not part of the tie-break.');
+      }
       const slot = `${positionId}:${groupId || 0}`;
       if (seen.has(slot)) throw new HttpError(400, 'Only one choice per category is allowed.');
       seen.add(slot);
@@ -201,8 +208,8 @@ router.post('/elections/:slug/vote', writeLimiter, authenticateVoter, asyncHandl
 
     // The ballot is deliberately not linked to the voter, so votes stay secret.
     const ballot = await c.query(
-      'INSERT INTO ballots (election_id, voter_token) VALUES ($1, $2) RETURNING id',
-      [e.id, 'b_' + crypto.randomBytes(16).toString('hex')]);
+      'INSERT INTO ballots (election_id, voter_token, round) VALUES ($1, $2, $3) RETURNING id',
+      [e.id, 'b_' + crypto.randomBytes(16).toString('hex'), round]);
 
     const values = [];
     const params = [ballot.rows[0].id, e.id];
@@ -213,7 +220,7 @@ router.post('/elections/:slug/vote', writeLimiter, authenticateVoter, asyncHandl
     await c.query(
       `INSERT INTO votes (ballot_id, election_id, position_id, group_id, candidate_id)
        VALUES ${values.join(', ')}`, params);
-    await c.query('UPDATE voters SET has_voted = TRUE WHERE id = $1', [req.voter.id]);
+    await c.query(`UPDATE voters SET ${round === 'initial' ? 'has_voted' : 'runoff_has_voted'} = TRUE WHERE id = $1`, [req.voter.id]);
   });
 
   res.status(201).json({ message: 'Vote recorded.' });

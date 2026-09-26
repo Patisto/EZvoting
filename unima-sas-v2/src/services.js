@@ -19,9 +19,15 @@ async function loadCandidates(db, electionId) {
 // positions -> slots (one per group, or a single slot when the election has no groups) -> candidates with vote counts
 async function buildResults(db, electionId) {
   const { groups, positions } = await loadStructure(db, electionId);
+  const election = await db.query('SELECT runoff_state, runoff_slots FROM elections WHERE id = $1', [electionId]);
+  const runoffState = election.rows[0]?.runoff_state || 'pending';
+  const runoffSlots = election.rows[0]?.runoff_slots || [];
   const cands = await db.query(
-    `SELECT c.id, c.position_id, c.group_id, c.name, c.photo_url, COUNT(v.id)::int AS votes
+    `SELECT c.id, c.position_id, c.group_id, c.name, c.photo_url,
+            COUNT(v.id) FILTER (WHERE b.round = 'initial')::int AS initial_votes,
+            COUNT(v.id) FILTER (WHERE b.round = 'runoff')::int AS runoff_votes
        FROM candidates c LEFT JOIN votes v ON v.candidate_id = c.id
+       LEFT JOIN ballots b ON b.id = v.ballot_id
       WHERE c.election_id = $1
       GROUP BY c.id`, [electionId]);
   const ballots = await db.query('SELECT COUNT(*)::int AS n FROM ballots WHERE election_id = $1', [electionId]);
@@ -29,16 +35,23 @@ async function buildResults(db, electionId) {
   const slotGroups = groups.length ? groups : [{ id: null, label: null }];
   return {
     total_ballots: ballots.rows[0].n,
+    runoff_state: runoffState,
+    runoff_slots: runoffSlots,
     positions: positions.map((p) => ({
       id: p.id,
       title: p.title,
       slots: slotGroups.map((g) => ({
         group_id: g.id,
         group_label: g.label,
+        runoff_pending: runoffState === 'open' && runoffSlots.some((s) => s.position_id === p.id && (s.group_id ?? null) === g.id),
         candidates: cands.rows
           .filter((c) => c.position_id === p.id && (c.group_id ?? null) === g.id)
-          .sort((a, b) => b.votes - a.votes || a.name.localeCompare(b.name))
-          .map(({ id, name, photo_url, votes }) => ({ id, name, photo_url, votes })),
+          .map(({ id, name, photo_url, initial_votes, runoff_votes }) => {
+            const slot = runoffSlots.find((s) => s.position_id === p.id && (s.group_id ?? null) === g.id);
+            const useRunoff = runoffState === 'closed' && slot;
+            return { id, name, photo_url, votes: useRunoff ? runoff_votes : initial_votes };
+          })
+          .sort((a, b) => b.votes - a.votes || a.name.localeCompare(b.name)),
       })),
     })),
   };

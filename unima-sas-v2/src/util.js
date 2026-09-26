@@ -92,6 +92,7 @@ function isStarted(e) {
 
 // Where an election currently is, in one word (used by the public pages).
 function phaseOf(e) {
+  if (e.runoff_state === 'open') return 'runoff';
   if (e.results_released) return 'results';
   if (e.voting_state === 'open') return 'voting';
   if (e.voting_state === 'closed') return 'voting_closed';
@@ -110,6 +111,8 @@ function publicElection(e) {
     nominations_state: e.nominations_state,
     registration_state: e.registration_state,
     voting_state: e.voting_state,
+    runoff_state: e.runoff_state,
+    runoff_slots: e.runoff_slots || [],
     results_released: e.results_released,
     public_nominations: e.public_nominations,
     phase: phaseOf(e),
@@ -125,6 +128,8 @@ function adminElection(e) {
     nominations_state: e.nominations_state,
     registration_state: e.registration_state,
     voting_state: e.voting_state,
+    runoff_state: e.runoff_state,
+    runoff_slots: e.runoff_slots || [],
     results_released: e.results_released,
     public_nominations: e.public_nominations,
     nominations_enabled: NOMINATIONS_ENABLED,

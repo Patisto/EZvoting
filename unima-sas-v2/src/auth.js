@@ -25,7 +25,7 @@ const authenticateVoter = asyncHandler(async (req, res, next) => {
     throw new HttpError(401, 'Session expired. Please log in again.');
   }
   const { rows } = await query(
-    'SELECT id, election_id, reg_number, status, has_voted FROM voters WHERE id = $1', [payload.sub]);
+    'SELECT id, election_id, reg_number, status, has_voted, runoff_has_voted FROM voters WHERE id = $1', [payload.sub]);
   if (!rows[0]) throw new HttpError(401, 'Please log in again.');
   req.voter = rows[0];
   next();

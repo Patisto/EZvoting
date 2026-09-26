@@ -509,11 +509,22 @@
     view.innerHTML = '<p class="muted">Loading…</p>';
     try {
       const { results } = await call('/results');
+      const tiedSlots = results.positions.flatMap((p) => p.slots
+        .filter((s) => {
+          const top = s.candidates[0]?.votes || 0;
+          return top > 0 && s.candidates.filter((c) => c.votes === top).length > 1;
+        })
+        .map((s) => ({ position_id: p.id, group_id: s.group_id })));
+      const runoffAction = S.election.runoff_state === 'open'
+        ? '<button class="btn danger sm" id="closeRunoff" type="button">Close tie-break</button>'
+        : (S.election.runoff_state === 'pending' && S.election.results_released && S.election.voting_state === 'closed' && tiedSlots.length
+          ? '<button class="btn primary sm" id="openRunoff" type="button">Open tie-break</button>' : '');
       view.innerHTML = `
         <div class="row between" style="margin-bottom:12px">
           <p class="muted"><b>${results.total_ballots}</b> ballots cast of ${S.counts.voters_approved} approved voters${S.election.voting_state === 'open' ? ' · voting is open, counts are live' : ''}</p>
           <div class="item-actions">
             <button class="btn sm" id="refresh" type="button">Refresh</button>
+            ${runoffAction}
             <button class="btn sm" id="export" type="button">Download data (JSON)</button>
             <button class="btn sm" id="pdf" type="button">Download PDF</button>
           </div>
@@ -521,6 +532,14 @@
         <div id="resBox"></div>`;
       renderResults($('#resBox'), results);
       $('#refresh').addEventListener('click', renderResultsTab);
+      if ($('#openRunoff')) $('#openRunoff').addEventListener('click', async () => {
+        if (await confirmDialog('Open tie-break?', `This will reopen voting for ${tiedSlots.length} tied categor${tiedSlots.length === 1 ? 'y' : 'ies'} only. All approved voters may vote once in those categories.`, { confirmLabel: 'Open tie-break' }))
+          act(() => call('/runoff', { method: 'POST', body: { slots: tiedSlots } }), 'Tie-break is open.');
+      });
+      if ($('#closeRunoff')) $('#closeRunoff').addEventListener('click', async () => {
+        if (await confirmDialog('Close tie-break?', 'No more tie-break votes will be accepted.', { danger: true, confirmLabel: 'Close tie-break' }))
+          act(() => call('/runoff/close', { method: 'POST' }), 'Tie-break closed.');
+      });
       $('#export').addEventListener('click', async () => {
         try { downloadJSON(await call('/export'), `${S.election.slug}-${new Date().toISOString().slice(0, 10)}.json`); }
         catch (e) { toast(e.message, 'error'); }

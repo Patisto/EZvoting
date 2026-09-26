@@ -6,6 +6,7 @@ function streamResponse(res, filename, fn) {
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   const doc = new PDFDocument({ margin: 48, size: 'A4' });
   doc.on('error', (err) => { console.error('[pdf]', err); if (!res.writableEnded) res.destroy(err); });
+  doc.pipe(res);
   fn(doc);
   doc.end();
 }
@@ -60,7 +61,7 @@ module.exports = {
           doc.font(win ? 'Helvetica-Bold' : 'Helvetica').fontSize(10)
             .text(`${i + 1}. ${c.name}`, 48, y, { width: 200 });
           doc.font('Helvetica').fontSize(10).text(`${c.votes} vote${c.votes === 1 ? '' : 's'}`, 256, y, { width: 80 });
-          doc.font('Helvetica').fontSize(9).text(win ? 'Winner 🏆' : 'Loser 🚲', 340, y + 2, { width: 100 });
+          doc.font('Helvetica').fontSize(9).text(win ? 'Winner' : 'Loser', 340, y + 2, { width: 100 });
           const barW = Math.round((c.votes / max) * 150);
           doc.rect(48, y + 14, barW, 6).fill(win ? '#c9a84c' : '#1a3a5c');
           doc.moveDown(1.2);

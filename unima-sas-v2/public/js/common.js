@@ -236,6 +236,7 @@
           const top = s.candidates.length && s.candidates[0].votes > 0 ? s.candidates[0].votes : null;
           return `<div class="result-slot">
             ${s.group_label ? `<div class="group-label">${esc(s.group_label)}</div>` : ''}
+            ${s.runoff_pending ? '<div class="banner warn">Tie-break in progress. These scores are not final.</div>' : ''}
             ${s.candidates.length ? s.candidates.map((c) => {
               const win = top !== null && c.votes === top;
               return `<div class="result-row${win ? ' winner' : ''}">

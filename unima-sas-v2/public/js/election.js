@@ -257,12 +257,24 @@
     bar.classList.add('hidden');
     const phase = election.phase;
     let body;
-    if (voter.has_voted) {
-      body = '<div class="banner ok">You have voted. Thank you for taking part.</div>';
-    } else if (voter.status === 'rejected') {
+    if (voter.status === 'rejected') {
       body = '<div class="banner warn">Your registration was not approved, so you cannot vote. Please contact the elections committee.</div>';
     } else if (voter.status === 'pending') {
       body = '<div class="banner warn">Your registration is still waiting for approval by the elections committee. Check again later.</div>';
+    } else if (phase === 'runoff' && !voter.runoff_has_voted) {
+      app.innerHTML = voterBar(voter) + '<div id="ballotBox"></div>';
+      $('#logoutBtn').addEventListener('click', logout);
+      renderBallot();
+      return;
+    } else if (phase === 'voting' && !voter.has_voted) {
+      app.innerHTML = voterBar(voter) + '<div id="ballotBox"></div>';
+      $('#logoutBtn').addEventListener('click', logout);
+      renderBallot();
+      return;
+    } else if (phase === 'runoff') {
+      body = '<div class="banner ok">Your tie-break vote has been recorded. Thank you.</div>';
+    } else if (voter.has_voted) {
+      body = '<div class="banner ok">You have voted. Thank you for taking part.</div>';
     } else if (phase !== 'voting') {
       body = '<div class="banner ok">Your registration is approved ✓ Voting has not opened yet. Come back to this page and log in when it does.</div>';
     } else {
@@ -293,13 +305,18 @@
     btn.disabled = false;
     btn.onclick = submitVotes;
 
+    const runoff = election.phase === 'runoff';
+    const activeSlots = runoff ? election.runoff_slots : [];
+    const isActive = (p, g) => !runoff || activeSlots.some((s) => s.position_id === p.id && (s.group_id ?? null) === g.id);
+    const ballotPositions = positions.filter((p) => slotGroups.some((g) => isActive(p, g)));
     box.innerHTML = `
-      <p class="muted small" style="margin-bottom:12px">Choose one candidate per category, then submit. You can only vote once, and you can skip categories.</p>
-      ${positions.map((p, i) => `
+      <p class="muted small" style="margin-bottom:12px">${runoff ? 'Tie-break vote: choose one candidate in each tied category.' : 'Choose one candidate per category, then submit. You can only vote once, and you can skip categories.'}</p>
+      ${ballotPositions.map((p, i) => `
         <div class="position-block">
           <div class="position-title"><span class="position-num">${i + 1}</span>${esc(p.title)}</div>
-          ${slotGroups.map((g) => {
-            const cs = candidates.filter((c) => c.position_id === p.id && (c.group_id ?? null) === g.id);
+          ${slotGroups.filter((g) => isActive(p, g)).map((g) => {
+            const active = activeSlots.find((s) => s.position_id === p.id && (s.group_id ?? null) === g.id);
+            const cs = candidates.filter((c) => c.position_id === p.id && (c.group_id ?? null) === g.id && (!runoff || active.candidate_ids.includes(c.id)));
             return `${g.label ? `<div class="group-label">${esc(g.label)}</div>` : ''}
               ${cs.length ? `<div class="candidates-grid">${cs.map((c) => `
                 <div class="candidate-card" data-pos="${p.id}" data-group="${g.id ?? ''}" data-id="${c.id}">
@@ -327,7 +344,9 @@
       const [p, g] = key.split(':').map(Number);
       return { position_id: p, group_id: g || null, candidate_id };
     });
-    const totalSlots = positions.length * slotGroups.length;
+    const totalSlots = election.phase === 'runoff'
+      ? election.runoff_slots.length
+      : positions.length * slotGroups.length;
     const skipped = totalSlots - votes.length;
     const msg = skipped > 0
       ? `You have skipped ${skipped} categor${skipped === 1 ? 'y' : 'ies'}. You cannot change your vote after submitting.`
@@ -344,7 +363,7 @@
       await api(`/public/elections/${encodeURIComponent(slug)}/vote`, { method: 'POST', body: { votes }, token: sess.token });
       selections.clear();
       toast('Vote submitted. Thank you!');
-      renderVoterHome({ reg_number: sess.reg, status: 'approved', has_voted: true });
+      renderVoterHome({ reg_number: sess.reg, status: 'approved', has_voted: true, runoff_has_voted: election.phase === 'runoff' });
     } catch (e) {
       if (e.status === 401) { toast('Your session ended. Please log in again.', 'error'); logout(); return; }
       if (e.status === 409) { toast(e.message, 'error'); showLogin(); return; }
@@ -382,6 +401,7 @@
       if (election.public_nominations) renderNominationList(true);
       break;
     case 'voting': setStatus('open', 'Voting is open'); renderVoterArea(false); break;
+    case 'runoff': setStatus('open', 'Tie-break voting is open'); renderVoterArea(false); break;
     case 'voting_closed':
       setStatus('closed', 'Voting is closed');
       app.innerHTML = '<div class="banner">Voting has closed. Results will be announced soon.</div>';

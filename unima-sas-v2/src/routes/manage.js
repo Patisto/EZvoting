@@ -136,6 +136,54 @@ el.post('/voting/state', asyncHandler(async (req, res) => {
   res.json({ election: adminElection(election) });
 }));
 
+el.post('/runoff', asyncHandler(async (req, res) => {
+  const rawSlots = req.body?.slots;
+  if (!Array.isArray(rawSlots) || !rawSlots.length || rawSlots.length > 100) {
+    throw new HttpError(400, 'Select at least one tie category.');
+  }
+
+  const election = await tx(async (c) => {
+    const cur = await lockElection(c, req.election.id);
+    if (cur.voting_state !== 'closed') throw new HttpError(409, 'Close voting before starting a tie-break.');
+    if (!cur.results_released) throw new HttpError(409, 'Release the initial results before starting a tie-break.');
+    if (cur.runoff_state !== 'pending') throw new HttpError(409, 'A tie-break has already been started.');
+
+    const results = await buildResults(c, cur.id);
+    const seen = new Set();
+    const slots = rawSlots.map((slot) => {
+      const positionId = parseId(slot?.position_id, 'position');
+      const groupId = slot?.group_id ? parseId(slot.group_id, 'group') : null;
+      const key = `${positionId}:${groupId || 0}`;
+      if (seen.has(key)) throw new HttpError(400, 'A category was selected more than once.');
+      seen.add(key);
+      const position = results.positions.find((p) => p.id === positionId);
+      const contest = position?.slots.find((s) => (s.group_id ?? null) === groupId);
+      if (!contest || contest.candidates.length < 2) throw new HttpError(400, 'Each tie-break category must have at least two candidates.');
+      const top = contest.candidates[0].votes;
+      const tied = contest.candidates.filter((candidate) => candidate.votes === top && top > 0);
+      if (tied.length < 2) throw new HttpError(400, 'Each selected category must be tied for first place.');
+      return { position_id: positionId, group_id: groupId, candidate_ids: tied.map((candidate) => candidate.id) };
+    });
+
+    const { rows } = await c.query(
+      `UPDATE elections SET runoff_state = 'open', runoff_slots = $2::jsonb, updated_at = NOW()
+       WHERE id = $1 RETURNING *`, [cur.id, JSON.stringify(slots)]);
+    return rows[0];
+  });
+  res.json({ election: adminElection(election) });
+}));
+
+el.post('/runoff/close', asyncHandler(async (req, res) => {
+  const election = await tx(async (c) => {
+    const cur = await lockElection(c, req.election.id);
+    if (cur.runoff_state !== 'open') throw new HttpError(409, 'The tie-break is not open.');
+    const { rows } = await c.query(
+      "UPDATE elections SET runoff_state = 'closed', updated_at = NOW() WHERE id = $1 RETURNING *", [cur.id]);
+    return rows[0];
+  });
+  res.json({ election: adminElection(election) });
+}));
+
 el.post('/results/release', asyncHandler(async (req, res) => {
   if (typeof req.body?.released !== 'boolean') throw new HttpError(400, 'released must be true or false.');
   const election = await tx(async (c) => {

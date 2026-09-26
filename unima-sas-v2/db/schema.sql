@@ -25,13 +25,18 @@ CREATE TABLE IF NOT EXISTS elections (
   updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Voter registration phase (added in v2.1; the ALTER keeps existing databases working)
 ALTER TABLE elections ADD COLUMN IF NOT EXISTS registration_state TEXT NOT NULL DEFAULT 'pending';
+ALTER TABLE elections ADD COLUMN IF NOT EXISTS runoff_state TEXT NOT NULL DEFAULT 'pending';
+ALTER TABLE elections ADD COLUMN IF NOT EXISTS runoff_slots JSONB NOT NULL DEFAULT '[]'::jsonb;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'elections_registration_state_check') THEN
     ALTER TABLE elections ADD CONSTRAINT elections_registration_state_check
       CHECK (registration_state IN ('pending', 'open', 'closed'));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'elections_runoff_state_check') THEN
+    ALTER TABLE elections ADD CONSTRAINT elections_runoff_state_check
+      CHECK (runoff_state IN ('pending', 'open', 'closed'));
   END IF;
 END $$;
 
@@ -43,9 +48,11 @@ CREATE TABLE IF NOT EXISTS voters (
   password_hash TEXT NOT NULL,
   status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
   has_voted     BOOLEAN NOT NULL DEFAULT FALSE,
+  runoff_has_voted BOOLEAN NOT NULL DEFAULT FALSE,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (election_id, reg_number)
 );
+ALTER TABLE voters ADD COLUMN IF NOT EXISTS runoff_has_voted BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE INDEX IF NOT EXISTS voters_election_status_idx ON voters (election_id, status);
 
 CREATE TABLE IF NOT EXISTS election_facilitators (
@@ -54,7 +61,6 @@ CREATE TABLE IF NOT EXISTS election_facilitators (
   PRIMARY KEY (election_id, user_id)
 );
 CREATE INDEX IF NOT EXISTS election_facilitators_user_idx ON election_facilitators (user_id);
-
 -- Optional split of every position into separate contests (e.g. Male / Female, Year 1 / Year 2)
 CREATE TABLE IF NOT EXISTS election_groups (
   id          BIGSERIAL PRIMARY KEY,
@@ -106,9 +112,18 @@ CREATE TABLE IF NOT EXISTS ballots (
   id          BIGSERIAL PRIMARY KEY,
   election_id BIGINT NOT NULL REFERENCES elections(id) ON DELETE CASCADE,
   voter_token TEXT NOT NULL,
+  round       TEXT NOT NULL DEFAULT 'initial' CHECK (round IN ('initial', 'runoff')),
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (election_id, voter_token)
+  UNIQUE (election_id, voter_token, round)
 );
+ALTER TABLE ballots ADD COLUMN IF NOT EXISTS round TEXT NOT NULL DEFAULT 'initial';
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ballots_election_id_voter_token_key') THEN
+    ALTER TABLE ballots DROP CONSTRAINT ballots_election_id_voter_token_key;
+  END IF;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS ballots_election_voter_round_key ON ballots (election_id, voter_token, round);
 
 CREATE TABLE IF NOT EXISTS votes (
   id           BIGSERIAL PRIMARY KEY,
